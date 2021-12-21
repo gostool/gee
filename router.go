@@ -22,11 +22,12 @@ func parsePattern(pattern string) []string {
 
 	parts := make([]string, 0)
 	for _, item := range vs {
-		if item != "" {
-			parts = append(parts, item)
-			if item[0] == '*' {
-				break
-			}
+		if item == "" {
+			continue
+		}
+		parts = append(parts, item)
+		if item[0] == '*' {
+			break
 		}
 	}
 	return parts
