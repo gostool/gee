@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/gogf/gf/frame/g"
+	"log"
 	"net/http"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestGf(t *testing.T) {
@@ -23,10 +25,19 @@ func TestGin(t *testing.T)  {
 	r.Run(":8000")
 }
 
+func onluForV2() HandlerFunc {
+	return func(c *Context) {
+		t := time.Now()
+		c.Fail(500, "Internal Server Error")
+		log.Printf("[%d] %s in %v for group v2", c.StatusCode, c.Req.RequestURI, time.Since(t))
+	}
+}
+
 func TestGee(t *testing.T) {
 	r := New()
-	r.GET("/index", func(c *Context) {
-		c.HTML(http.StatusOK, "<h1>Index Page</h1>")
+	r.Use(Logger())
+	r.GET("/", func(c *Context) {
+		c.HTML(http.StatusOK, "<h1>Hello Gee</h1>")
 	})
 	v1 := r.Group("/v1")
 	{
@@ -40,18 +51,12 @@ func TestGee(t *testing.T) {
 		})
 	}
 	v2 := r.Group("/v2")
+	v2.Use(onluForV2())
 	{
 		v2.GET("/hello/:name", func(c *Context) {
 			// expect /hello/geektutu
 			c.String(http.StatusOK, "hello %s, you're at %s\n", c.Param("name"), c.Path)
 		})
-		v2.POST("/login", func(c *Context) {
-			c.JSON(http.StatusOK, H{
-				"username": c.PostForm("username"),
-				"password": c.PostForm("password"),
-			})
-		})
-
 	}
 	r.Run(":8000")
 }
