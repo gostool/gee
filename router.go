@@ -6,13 +6,13 @@ import (
 )
 
 type router struct {
-	roots map[string]*node
+	roots    map[string]*node
 	handlers map[string]HandlerFunc
 }
 
 func newRouter() *router {
 	return &router{
-		roots: make(map[string]*node),
+		roots:    make(map[string]*node),
 		handlers: make(map[string]HandlerFunc),
 	}
 }
@@ -33,7 +33,7 @@ func parsePattern(pattern string) []string {
 	return parts
 }
 
-func (r *router)addRoute(method string, pattern string, handler HandlerFunc)  {
+func (r *router) addRoute(method string, pattern string, handler HandlerFunc) {
 	parts := parsePattern(pattern)
 	key := method + "-" + pattern
 	_, ok := r.roots[method]
@@ -44,11 +44,11 @@ func (r *router)addRoute(method string, pattern string, handler HandlerFunc)  {
 	r.handlers[key] = handler
 }
 
-func (r *router)getRoute(method string, path string) (*node, map[string]string) {
+func (r *router) getRoute(method string, path string) (*node, map[string]string) {
 	searchParts := parsePattern(path)
 	root, ok := r.roots[method]
 	if !ok {
-		return nil,nil
+		return nil, nil
 	}
 	n := root.search(searchParts, 0)
 	if n == nil {
@@ -69,7 +69,7 @@ func (r *router)getRoute(method string, path string) (*node, map[string]string) 
 	return n, params
 }
 
-func (r *router)handle(c *Context) {
+func (r *router) handle(c *Context) {
 	n, params := r.getRoute(c.Method, c.Path)
 	if n != nil {
 		c.Params = params

@@ -9,10 +9,10 @@ import (
 type HandlerFunc func(*Context)
 
 type RouterGroup struct {
-	prefix string
+	prefix      string
 	middlewares []HandlerFunc
-	parent *RouterGroup
-	engine *Engine
+	parent      *RouterGroup
+	engine      *Engine
 }
 
 type Engine struct {
@@ -28,13 +28,13 @@ func New() *Engine {
 	return engine
 }
 
-func (group *RouterGroup)Use(middlewares ...HandlerFunc) {
+func (group *RouterGroup) Use(middlewares ...HandlerFunc) {
 	group.middlewares = append(group.middlewares, middlewares...)
 }
 
 //Group is defined to create a new RouterGroup
 //remember all groups share the same Engine instance
-func (group *RouterGroup)Group(prefix string) *RouterGroup {
+func (group *RouterGroup) Group(prefix string) *RouterGroup {
 	engine := group.engine
 	newGroup := &RouterGroup{
 		prefix: group.prefix + prefix,
@@ -45,33 +45,33 @@ func (group *RouterGroup)Group(prefix string) *RouterGroup {
 	return newGroup
 }
 
-func (group *RouterGroup)addRoute(method string, comp string, handler HandlerFunc)  {
+func (group *RouterGroup) addRoute(method string, comp string, handler HandlerFunc) {
 	pattern := group.prefix + comp
 	log.Printf("Route%4s - %s", method, pattern)
 	group.engine.router.addRoute(method, pattern, handler)
 }
 
-func (group *RouterGroup)GET(pattern string, handler HandlerFunc) {
+func (group *RouterGroup) GET(pattern string, handler HandlerFunc) {
 	group.addRoute("GET", pattern, handler)
 }
 
-func (group *RouterGroup)POST(pattern string, handler HandlerFunc) {
+func (group *RouterGroup) POST(pattern string, handler HandlerFunc) {
 	group.addRoute("GET", pattern, handler)
 }
 
-func (engine *Engine)addRoute(method string, pattern string, handler HandlerFunc)  {
+func (engine *Engine) addRoute(method string, pattern string, handler HandlerFunc) {
 	engine.router.addRoute(method, pattern, handler)
 }
 
-func (engine *Engine)GET(pattern string, handler HandlerFunc) {
+func (engine *Engine) GET(pattern string, handler HandlerFunc) {
 	engine.addRoute("GET", pattern, handler)
 }
 
-func (engine *Engine)POST(pattern string, handler HandlerFunc) {
+func (engine *Engine) POST(pattern string, handler HandlerFunc) {
 	engine.addRoute("POST", pattern, handler)
 }
 
-func (engine *Engine)Run(addr string) (err error) {
+func (engine *Engine) Run(addr string) (err error) {
 	return http.ListenAndServe(addr, engine)
 }
 

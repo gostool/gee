@@ -15,7 +15,7 @@ func TestGf(t *testing.T) {
 	g.Server().Run()
 }
 
-func TestGin(t *testing.T)  {
+func TestGin(t *testing.T) {
 	r := gin.Default()
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{
