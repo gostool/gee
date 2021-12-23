@@ -46,27 +46,27 @@ func (r *router)addRoute(method string, pattern string, handler HandlerFunc)  {
 
 func (r *router)getRoute(method string, path string) (*node, map[string]string) {
 	searchParts := parsePattern(path)
-	params := make(map[string]string)
 	root, ok := r.roots[method]
 	if !ok {
 		return nil,nil
 	}
 	n := root.search(searchParts, 0)
-
-	if n != nil {
-		parts := parsePattern(n.pattern)
-		for index, part := range parts {
-			if part[0] == ':' {
-				params[part[1:]] = searchParts[index]
-			}
-			if part[0] == '*' && len(part) > 1 {
-				params[part[1:]] = strings.Join(searchParts[index:], "/")
-				break
-			}
-		}
-		return n, params
+	if n == nil {
+		return nil, nil
 	}
-	return nil, nil
+
+	parts := parsePattern(n.pattern)
+	params := make(map[string]string)
+	for index, part := range parts {
+		if part[0] == ':' {
+			params[part[1:]] = searchParts[index]
+		}
+		if part[0] == '*' && len(part) > 1 {
+			params[part[1:]] = strings.Join(searchParts[index:], "/")
+			break
+		}
+	}
+	return n, params
 }
 
 func (r *router)handle(c *Context) {
@@ -74,8 +74,11 @@ func (r *router)handle(c *Context) {
 	if n != nil {
 		c.Params = params
 		key := c.Method + "-" + n.pattern
-		r.handlers[key](c)
+		c.handlers = append(c.handlers, r.handlers[key])
 	} else {
-		c.String(http.StatusNotFound, "404 NOT FOUND: %s\n", c.Path)
+		c.handlers = append(c.handlers, func(c *Context) {
+			c.String(http.StatusNotFound, "404 NOT FOUND: %s\n", c.Path)
+		})
 	}
+	c.Next()
 }
