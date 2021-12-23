@@ -25,7 +25,7 @@ func TestGin(t *testing.T)  {
 	r.Run(":8000")
 }
 
-func onluForV2() HandlerFunc {
+func onlyForV2() HandlerFunc {
 	return func(c *Context) {
 		t := time.Now()
 		c.Fail(500, "Internal Server Error")
@@ -51,7 +51,7 @@ func TestGee(t *testing.T) {
 		})
 	}
 	v2 := r.Group("/v2")
-	v2.Use(onluForV2())
+	v2.Use(onlyForV2())
 	{
 		v2.GET("/hello/:name", func(c *Context) {
 			// expect /hello/geektutu
