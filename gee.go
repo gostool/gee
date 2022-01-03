@@ -1,24 +1,28 @@
 package gee
 
 import (
+	"html/template"
 	"log"
 	"net/http"
+	"path"
 	"strings"
 )
 
 type HandlerFunc func(*Context)
 
 type RouterGroup struct {
-	prefix string
+	prefix      string
 	middlewares []HandlerFunc
-	parent *RouterGroup
-	engine *Engine
+	parent      *RouterGroup
+	engine      *Engine
 }
 
 type Engine struct {
 	*RouterGroup
-	router *router
-	groups []*RouterGroup //store all groups
+	router        *router
+	groups        []*RouterGroup     //store all groups
+	htmlTemplates *template.Template // for html render
+	funcMap       template.FuncMap   // for html render
 }
 
 func New() *Engine {
@@ -28,13 +32,34 @@ func New() *Engine {
 	return engine
 }
 
-func (group *RouterGroup)Use(middlewares ...HandlerFunc) {
+func (group *RouterGroup) Use(middlewares ...HandlerFunc) {
 	group.middlewares = append(group.middlewares, middlewares...)
+}
+
+func (group *RouterGroup) createStaticHandler(relativePath string, fs http.FileSystem) HandlerFunc {
+	absolutePath := path.Join(group.prefix, relativePath)
+	fileServer := http.StripPrefix(absolutePath, http.FileServer(fs))
+	return func(c *Context) {
+		file := c.Param("filepath")
+		if _, err := fs.Open(file); err != nil {
+			c.Status(http.StatusNotFound)
+			return
+		}
+		fileServer.ServeHTTP(c.Writer, c.Req)
+	}
+}
+
+// serve static files
+func (group *RouterGroup) Static(relativePath string, root string) {
+	handler := group.createStaticHandler(relativePath, http.Dir(root))
+	urlPattern := path.Join(relativePath, "/*filepath")
+	// Register GET handlers
+	group.GET(urlPattern, handler)
 }
 
 //Group is defined to create a new RouterGroup
 //remember all groups share the same Engine instance
-func (group *RouterGroup)Group(prefix string) *RouterGroup {
+func (group *RouterGroup) Group(prefix string) *RouterGroup {
 	engine := group.engine
 	newGroup := &RouterGroup{
 		prefix: group.prefix + prefix,
@@ -45,33 +70,41 @@ func (group *RouterGroup)Group(prefix string) *RouterGroup {
 	return newGroup
 }
 
-func (group *RouterGroup)addRoute(method string, comp string, handler HandlerFunc)  {
+func (group *RouterGroup) addRoute(method string, comp string, handler HandlerFunc) {
 	pattern := group.prefix + comp
 	log.Printf("Route%4s - %s", method, pattern)
 	group.engine.router.addRoute(method, pattern, handler)
 }
 
-func (group *RouterGroup)GET(pattern string, handler HandlerFunc) {
+func (group *RouterGroup) GET(pattern string, handler HandlerFunc) {
 	group.addRoute("GET", pattern, handler)
 }
 
-func (group *RouterGroup)POST(pattern string, handler HandlerFunc) {
+func (group *RouterGroup) POST(pattern string, handler HandlerFunc) {
 	group.addRoute("GET", pattern, handler)
 }
 
-func (engine *Engine)addRoute(method string, pattern string, handler HandlerFunc)  {
+func (engine *Engine) SetFuncMap(funcMap template.FuncMap) {
+	engine.funcMap = funcMap
+}
+
+func (engine *Engine) LoadHTMLGlob(pattern string) {
+	engine.htmlTemplates = template.Must(template.New("").Funcs(engine.funcMap).ParseGlob(pattern))
+}
+
+func (engine *Engine) addRoute(method string, pattern string, handler HandlerFunc) {
 	engine.router.addRoute(method, pattern, handler)
 }
 
-func (engine *Engine)GET(pattern string, handler HandlerFunc) {
+func (engine *Engine) GET(pattern string, handler HandlerFunc) {
 	engine.addRoute("GET", pattern, handler)
 }
 
-func (engine *Engine)POST(pattern string, handler HandlerFunc) {
+func (engine *Engine) POST(pattern string, handler HandlerFunc) {
 	engine.addRoute("POST", pattern, handler)
 }
 
-func (engine *Engine)Run(addr string) (err error) {
+func (engine *Engine) Run(addr string) (err error) {
 	return http.ListenAndServe(addr, engine)
 }
 
@@ -84,5 +117,6 @@ func (engine *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	c := newContext(w, r)
 	c.handlers = middlewares
+	c.engine = engine
 	engine.router.handle(c)
 }
